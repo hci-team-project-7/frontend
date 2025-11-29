@@ -1,0 +1,26 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @media (prefers-color-scheme: light) {
+      .background { fill: #3b82f6; }
+      .foreground { fill: white; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .background { fill: #1e40af; }
+      .foreground { fill: white; }
+    }
+  </style>
+  <rect class="background" width="180" height="180" rx="37" />
+  <g transform="translate(40, 50)">
+    <!-- 여행 가방 본체 -->
+    <rect class="foreground" x="15" y="25" width="50" height="40" rx="3" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 가방 손잡이 -->
+    <path class="foreground" d="M25 25C25 20 28 17 32 17H48C52 17 55 20 55 25" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- 가방 중간 구분선 -->
+    <line class="foreground" x1="20" y1="42" x2="60" y2="42" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- 가방 바퀴 -->
+    <circle class="foreground" cx="30" cy="70" r="4.5" fill="none" stroke-width="2.5"/>
+    <circle class="foreground" cx="30" cy="70" r="1.5"/>
+    <circle class="foreground" cx="50" cy="70" r="4.5" fill="none" stroke-width="2.5"/>
+    <circle class="foreground" cx="50" cy="70" r="1.5"/>
+  </g>
+</svg>
