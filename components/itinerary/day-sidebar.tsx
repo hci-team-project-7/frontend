@@ -1,20 +1,5 @@
 "use client"
-
-interface Location {
-  name: string
-  time: string
-  lat: number
-  lng: number
-}
-
-interface DayItinerary {
-  day: number
-  date: string
-  title: string
-  photo: string
-  activities: string[]
-  locations: Location[]
-}
+import { DayItinerary } from "@/lib/api-types"
 
 export default function DaySidebar({
   itinerary,

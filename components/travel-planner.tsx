@@ -7,25 +7,22 @@ import Step4Travelers from "@/components/steps/step-4-travelers"
 import Step5Style from "@/components/steps/step-5-style"
 import ProgressBar from "@/components/progress-bar"
 import ItineraryResults from "@/components/itinerary-results"
-
-interface PlannerData {
-  country: string | null
-  cities: string[]
-  dateRange: { start: string; end: string } | null
-  travelers: { adults: number; children: number; type: string }
-  styles: string[]
-}
+import { Itinerary, PlannerData, PlannerFormData } from "@/lib/api-types"
+import { createItinerary } from "@/lib/api"
 
 export default function TravelPlanner() {
   const [currentStep, setCurrentStep] = useState(1)
   const [showResults, setShowResults] = useState(false)
-  const [data, setData] = useState<PlannerData>({
+  const [formData, setFormData] = useState<PlannerFormData>({
     country: null,
     cities: [],
     dateRange: null,
     travelers: { adults: 1, children: 0, type: "Solo traveler" },
     styles: [],
   })
+  const [itinerary, setItinerary] = useState<Itinerary | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleNext = () => {
     if (currentStep < 5) {
@@ -39,16 +36,46 @@ export default function TravelPlanner() {
     }
   }
 
-  const handleGenerateItinerary = () => {
-    setShowResults(true)
+  const handleGenerateItinerary = async () => {
+    if (!formData.country || !formData.dateRange) {
+      setError("여행지와 여행 날짜를 모두 선택해주세요.")
+      return
+    }
+
+    const payload: PlannerData = {
+      country: formData.country,
+      cities: formData.cities,
+      dateRange: formData.dateRange,
+      travelers: formData.travelers,
+      styles: formData.styles,
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      const createdItinerary = await createItinerary(payload)
+      setItinerary(createdItinerary)
+      setShowResults(true)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "여행 일정을 생성하는 중 문제가 발생했습니다."
+      setError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const updateData = (key: keyof PlannerData, value: any) => {
-    setData((prev) => ({ ...prev, [key]: value }))
+  const updateData = <K extends keyof PlannerFormData>(key: K, value: PlannerFormData[K]) => {
+    setFormData((prev) => ({ ...prev, [key]: value }))
   }
 
-  if (showResults) {
-    return <ItineraryResults data={data} onBack={() => setShowResults(false)} />
+  if (showResults && itinerary) {
+    return (
+      <ItineraryResults
+        itinerary={itinerary}
+        onBack={() => setShowResults(false)}
+        onUpdateItinerary={(updated) => setItinerary(updated)}
+      />
+    )
   }
 
   return (
@@ -56,11 +83,11 @@ export default function TravelPlanner() {
       <ProgressBar currentStep={currentStep} totalSteps={5} />
 
       <div className="mx-auto max-w-4xl px-4 py-12">
-        {currentStep === 1 && <Step1Destination data={data} updateData={updateData} />}
-        {currentStep === 2 && <Step2Cities data={data} updateData={updateData} />}
-        {currentStep === 3 && <Step3Dates data={data} updateData={updateData} />}
-        {currentStep === 4 && <Step4Travelers data={data} updateData={updateData} />}
-        {currentStep === 5 && <Step5Style data={data} updateData={updateData} />}
+        {currentStep === 1 && <Step1Destination data={formData} updateData={updateData} />}
+        {currentStep === 2 && <Step2Cities data={formData} updateData={updateData} />}
+        {currentStep === 3 && <Step3Dates data={formData} updateData={updateData} />}
+        {currentStep === 4 && <Step4Travelers data={formData} updateData={updateData} />}
+        {currentStep === 5 && <Step5Style data={formData} updateData={updateData} />}
 
         {/* Navigation Buttons */}
         <div className="mt-12 flex justify-between">
@@ -83,12 +110,15 @@ export default function TravelPlanner() {
           ) : (
             <button
               onClick={handleGenerateItinerary}
-              className="rounded-lg bg-gradient-to-r from-green-400 to-emerald-500 px-8 py-3 font-semibold text-white transition-all hover:shadow-lg hover:shadow-green-400/50"
+              disabled={isSubmitting}
+              className="rounded-lg bg-gradient-to-r from-green-400 to-emerald-500 px-8 py-3 font-semibold text-white transition-all hover:shadow-lg hover:shadow-green-400/50 disabled:opacity-70"
             >
-              나의 여정 생성하기
+              {isSubmitting ? "일정 생성 중..." : "나의 여정 생성하기"}
             </button>
           )}
         </div>
+
+        {error && <p className="mt-4 text-center text-sm text-red-600">{error}</p>}
       </div>
     </main>
   )

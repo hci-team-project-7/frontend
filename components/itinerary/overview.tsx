@@ -1,134 +1,102 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import DaySidebar from "@/components/itinerary/day-sidebar"
 import ItineraryMap from "@/components/itinerary/itinerary-map"
-
-interface PlannerData {
-  country: string | null
-  cities: string[]
-  dateRange: { start: string; end: string } | null
-  travelers: { adults: number; children: number; type: string }
-  styles: string[]
-}
-
-const MOCK_ITINERARY = [
-  {
-    day: 1,
-    date: "2025-06-01",
-    title: "도시 도착 및 탐험",
-    photo: "/city-arrival.jpg",
-    activities: ["공항 도착", "호텔 체크인", "저녁 시가지 산책", "지역 레스토랑 식사"],
-    locations: [
-      { name: "공항", time: "10:00", lat: 40.7128, lng: -74.006 },
-      { name: "호텔", time: "12:00", lat: 40.758, lng: -73.9855 },
-      { name: "타임스퀘어", time: "17:00", lat: 40.758, lng: -73.9855 },
-      { name: "레스토랑", time: "19:30", lat: 40.7489, lng: -73.968 },
-    ],
-  },
-  {
-    day: 2,
-    date: "2025-06-02",
-    title: "유명 명소 방문",
-    photo: "/famous-landmarks.jpg",
-    activities: ["박물관 투어", "공원 산책", "전망대 방문", "쇼핑"],
-    locations: [
-      { name: "박물관", time: "09:00", lat: 40.7813, lng: -73.974 },
-      { name: "센트럴 파크", time: "12:00", lat: 40.7829, lng: -73.9654 },
-      { name: "전망대", time: "15:00", lat: 40.7484, lng: -73.9857 },
-      { name: "쇼핑 거리", time: "17:30", lat: 40.7505, lng: -73.9972 },
-    ],
-  },
-  {
-    day: 3,
-    date: "2025-06-03",
-    title: "문화 체험",
-    photo: "/vibrant-cultural-celebration.png",
-    activities: ["갤러리 방문", "극장 공연", "지역 음식 투어", "야경 촬영"],
-    locations: [
-      { name: "갤러리", time: "10:00", lat: 40.7736, lng: -73.9566 },
-      { name: "극장", time: "14:00", lat: 40.7505, lng: -73.9972 },
-      { name: "음식 시장", time: "18:00", lat: 40.7489, lng: -73.968 },
-      { name: "야경 전망점", time: "20:00", lat: 40.7061, lng: -74.0088 },
-    ],
-  },
-  {
-    day: 4,
-    date: "2025-06-04",
-    title: "자연 탐방",
-    photo: "/nature-hiking.jpg",
-    activities: ["산악 하이킹", "폭포 관광", "피크닉 점심", "별 관찰"],
-    locations: [
-      { name: "하이킹 시작점", time: "08:00", lat: 41.0534, lng: -74.2591 },
-      { name: "폭포", time: "11:00", lat: 41.0722, lng: -74.2518 },
-      { name: "피크닉 지점", time: "13:00", lat: 41.0534, lng: -74.2591 },
-      { name: "별 관찰소", time: "20:00", lat: 41.1315, lng: -74.1481 },
-    ],
-  },
-  {
-    day: 5,
-    date: "2025-06-05",
-    title: "현지 시장 투어",
-    photo: "/vibrant-local-market.png",
-    activities: ["전통 시장", "지역 수공예 쇼핑", "요리 교실", "야식"],
-    locations: [
-      { name: "시장 입구", time: "09:00", lat: 40.7128, lng: -74.006 },
-      { name: "수공예 샵", time: "11:00", lat: 40.7108, lng: -74.0073 },
-      { name: "요리 학교", time: "14:00", lat: 40.7147, lng: -74.0055 },
-      { name: "저녁 식사", time: "19:00", lat: 40.7489, lng: -73.968 },
-    ],
-  },
-  {
-    day: 6,
-    date: "2025-06-06",
-    title: "휴식 및 해변",
-    photo: "/beach-relaxation.png",
-    activities: ["비치 데이", "수상 스포츠", "해변 카페", "선셋 감상"],
-    locations: [
-      { name: "해변", time: "10:00", lat: 40.5731, lng: -73.9712 },
-      { name: "수상 스포츠 센터", time: "12:00", lat: 40.5731, lng: -73.9712 },
-      { name: "비치 카페", time: "15:00", lat: 40.5731, lng: -73.9712 },
-      { name: "선셋 스팟", time: "19:00", lat: 40.5731, lng: -73.9712 },
-    ],
-  },
-  {
-    day: 7,
-    date: "2025-06-07",
-    title: "출발 준비",
-    photo: "/departure-airport.jpg",
-    activities: ["쇼핑 마무리", "기념품 구매", "호텔 체크아웃", "공항 출발"],
-    locations: [
-      { name: "최종 쇼핑", time: "10:00", lat: 40.7128, lng: -74.006 },
-      { name: "기념품 샵", time: "12:00", lat: 40.7505, lng: -73.9972 },
-      { name: "호텔", time: "14:00", lat: 40.758, lng: -73.9855 },
-      { name: "공항", time: "17:00", lat: 40.7128, lng: -74.006 },
-    ],
-  },
-]
+import { DayItinerary } from "@/lib/api-types"
+import { formatScheduleTime } from "@/lib/time-format"
 
 export default function ItineraryOverview({
-  data,
+  itinerary,
   onSelectDay,
 }: {
-  data: PlannerData
+  itinerary: DayItinerary[]
   onSelectDay: (day: number) => void
 }) {
-  const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [selectedDay, setSelectedDay] = useState<number | null>(itinerary[0]?.day ?? null)
+
+  useEffect(() => {
+    if (itinerary.length === 0) {
+      setSelectedDay(null)
+      return
+    }
+    if (selectedDay === null || !itinerary.some((day) => day.day === selectedDay)) {
+      setSelectedDay(itinerary[0].day)
+    }
+  }, [itinerary, selectedDay])
+
+  const selected = useMemo(() => {
+    if (selectedDay === null) return itinerary[0]
+    return itinerary.find((day) => day.day === selectedDay) || itinerary[0]
+  }, [itinerary, selectedDay])
 
   const handleDayClick = (day: number) => {
-    setSelectedDay(day)
-    onSelectDay(day)
+    if (selectedDay === day) {
+      onSelectDay(day) // 이미 선택된 카드를 다시 클릭했을 때만 상세 화면으로 이동
+    } else {
+      setSelectedDay(day)
+    }
   }
 
   return (
     <div className="grid grid-cols-12 gap-6">
-      {/* Left Sidebar - 35% */}
       <div className="col-span-12 lg:col-span-4">
-        <DaySidebar itinerary={MOCK_ITINERARY} selectedDay={selectedDay} onSelectDay={handleDayClick} />
+        <DaySidebar itinerary={itinerary} selectedDay={selectedDay} onSelectDay={handleDayClick} />
       </div>
 
-      {/* Right Side - 65% */}
-      <div className="col-span-12 lg:col-span-8">
-        <ItineraryMap itinerary={MOCK_ITINERARY} selectedDay={selectedDay} title="전체 주간 일정" />
+      <div className="col-span-12 lg:col-span-8 space-y-6">
+        {selected ? (
+          <>
+            <div className="rounded-xl border border-blue-100 bg-white shadow-sm">
+              <div className="relative h-64 w-full overflow-hidden rounded-t-xl">
+                <img
+                  src={selected.photo || "/placeholder.svg"}
+                  alt={selected.title}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-4 left-4">
+                  <p className="text-sm text-blue-50">Day {selected.day}</p>
+                  <h3 className="text-2xl font-bold text-white">{selected.title}</h3>
+                  <p className="text-sm text-blue-50">{selected.date}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-6 p-6 md:grid-cols-2">
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-blue-900">주요 활동</h4>
+                  <ul className="space-y-2">
+                    {selected.activities.map((activity, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                        <span className="mt-1 text-orange-500">•</span>
+                        <span>{activity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-blue-900">방문 예정 장소</h4>
+                  <div className="space-y-2">
+                    {selected.locations.map((location, idx) => (
+                      <div key={idx} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900">{location.name}</span>
+                          <span className="text-xs text-gray-600">⏰ {formatScheduleTime(location.time)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <ItineraryMap itinerary={itinerary} selectedDay={selectedDay} title="지도에서 보기" />
+          </>
+        ) : (
+          <div className="flex h-full min-h-[320px] items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50 text-sm text-blue-700">
+            불러올 일정이 없습니다.
+          </div>
+        )}
       </div>
     </div>
   )

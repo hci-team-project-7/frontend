@@ -1,21 +1,6 @@
 "use client"
 import { useState } from "react"
-
-interface Activity {
-  id: string
-  name: string
-  location: string
-  time: string
-  duration: string
-  description: string
-  image: string
-  openHours: string
-  price: string
-  tips: string[]
-  nearbyFood: string[]
-  estimatedDuration: string
-  bestTime: string
-}
+import { Activity } from "@/lib/api-types"
 
 export default function ActivityDetail({ activity }: { activity: Activity }) {
   const [isFavorite, setIsFavorite] = useState(false)
