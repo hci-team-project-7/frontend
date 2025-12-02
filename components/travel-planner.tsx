@@ -7,6 +7,7 @@ import Step4Travelers from "@/components/steps/step-4-travelers"
 import Step5Style from "@/components/steps/step-5-style"
 import ProgressBar from "@/components/progress-bar"
 import ItineraryResults from "@/components/itinerary-results"
+import GenerationProgress from "@/components/generation-progress"
 import { Itinerary, PlannerData, PlannerFormData } from "@/lib/api-types"
 import { createItinerary } from "@/lib/api"
 
@@ -79,7 +80,8 @@ export default function TravelPlanner() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="relative min-h-screen bg-white">
+      {isSubmitting && <GenerationProgress />}
       <ProgressBar currentStep={currentStep} totalSteps={5} />
 
       <div className="mx-auto max-w-4xl px-4 py-12">
