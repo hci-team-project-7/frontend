@@ -74,9 +74,10 @@ export interface Itinerary {
 export type ChatSender = "user" | "assistant"
 
 export interface ChatChange {
-  action: "add" | "remove" | "modify" | "transport" | "regenerate"
+  action: "add" | "remove" | "modify" | "transport" | "regenerate" | "replace"
   day?: number
   location?: string
+  targetLocation?: string
   details?: string
   mode?: TransportMode
   afterActivityName?: string
@@ -123,7 +124,7 @@ export interface ChatMessage {
 export interface ChatRequestContext {
   currentView: "overview" | "daily"
   currentDay?: number
-  pendingAction?: "remove" | "add" | "transport" | "restaurant" | null
+  pendingAction?: "remove" | "add" | "transport" | "restaurant" | "replace" | null
 }
 
 export interface ChatRequestPayload {

@@ -4,17 +4,23 @@ import { cn } from "@/lib/utils"
 import { Activity, TransportLeg } from "@/lib/api-types"
 
 export default function ActivityTimeline({
+  day,
   activities,
   transports,
   expandedActivity,
   onSelectActivity,
   highlightTransportFromId,
+  onOpenChatForActivity,
+  onOpenChatForTransport,
 }: {
+  day: number
   activities: Activity[]
   transports: TransportLeg[]
   expandedActivity: string | null
   onSelectActivity: (id: string) => void
   highlightTransportFromId?: string | null
+  onOpenChatForActivity?: (activity: Activity, day: number) => void
+  onOpenChatForTransport?: (leg: TransportLeg, from: Activity, to: Activity, day: number) => void
 }) {
   const transportMap = useMemo(() => {
     const map = new Map<string, TransportLeg>()
@@ -74,6 +80,7 @@ export default function ActivityTimeline({
                     : "border-gray-200 bg-white hover:border-blue-300"
                 }`}
                 onClick={() => onSelectActivity(activity.id)}
+                onDoubleClick={() => onOpenChatForActivity?.(activity, day)}
               >
                 {/* Time indicator */}
                 <div className="flex items-start gap-4">
@@ -113,11 +120,12 @@ export default function ActivityTimeline({
                 <div className="ml-8 border-l-2 border-dashed border-blue-200 pl-6 py-3">
                   <div
                     className={cn(
-                      "rounded-lg border px-4 py-3 flex items-center justify-between text-sm shadow-sm transition-colors",
+                      "rounded-lg border px-4 py-3 flex items-center justify-between text-sm shadow-sm transition-colors cursor-pointer",
                       isHighlighted
                         ? "border-amber-300 bg-amber-50 text-amber-900"
                         : "border-blue-200 bg-blue-50 text-blue-900",
                     )}
+                    onDoubleClick={() => toActivity && onOpenChatForTransport?.(leg, activity, toActivity, day)}
                   >
                     <div className="flex items-center gap-3 font-semibold">
                       <span>{modeIcon(leg.mode)}</span>

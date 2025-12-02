@@ -393,7 +393,7 @@ interface ChatMessage {
   "context": {
     "currentView": "daily",          // "overview" | "daily"
     "currentDay": 2,
-    "pendingAction": null            // "remove" | "add" | "transport" | "restaurant" | null
+   "pendingAction": null            // "remove" | "add" | "transport" | "restaurant" | "replace" | null
   }
 }
 ```

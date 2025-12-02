@@ -11,6 +11,8 @@ export default function DailyDetailPage({
   availableDays,
   onSelectDay,
   highlightTransportFromId,
+  onOpenChatForActivity,
+  onOpenChatForTransport,
 }: {
   day: number
   activities: Activity[]
@@ -18,6 +20,8 @@ export default function DailyDetailPage({
   availableDays: number[]
   onSelectDay: (day: number) => void
   highlightTransportFromId?: string | null
+  onOpenChatForActivity?: (activity: Activity, day: number) => void
+  onOpenChatForTransport?: (leg: TransportLeg, from: Activity, to: Activity, day: number) => void
 }) {
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null)
 
@@ -56,11 +60,14 @@ export default function DailyDetailPage({
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-5">
           <ActivityTimeline
+            day={day}
             activities={activities}
             transports={transports}
             expandedActivity={expandedActivity}
             onSelectActivity={setExpandedActivity}
             highlightTransportFromId={highlightTransportFromId}
+            onOpenChatForActivity={onOpenChatForActivity}
+            onOpenChatForTransport={onOpenChatForTransport}
           />
         </div>
 

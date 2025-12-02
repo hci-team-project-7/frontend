@@ -7,6 +7,10 @@ import ItineraryChat from "@/components/itinerary-chat"
 import { Button } from "@/components/ui/button"
 import { Activity, ChatChange, Itinerary, TransportLeg } from "@/lib/api-types"
 
+type ChatLaunchContext =
+  | { type: "activity"; day: number; activityId: string; name: string; location: string }
+  | { type: "transport"; day: number; from: string; to: string }
+
 interface ItineraryResultsProps {
   itinerary: Itinerary
   onBack: () => void
@@ -18,6 +22,7 @@ export default function ItineraryResults({ itinerary, onBack, onUpdateItinerary 
   const [view, setView] = useState<"overview" | "daily">("overview")
   const [selectedDay, setSelectedDay] = useState<number>(firstDay)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [chatLaunchContext, setChatLaunchContext] = useState<ChatLaunchContext | null>(null)
   const [highlightedTransport, setHighlightedTransport] = useState<{ day: number; fromActivityId: string } | null>(
     null,
   )
@@ -75,6 +80,29 @@ export default function ItineraryResults({ itinerary, onBack, onUpdateItinerary 
     }
   }
 
+  const openChatForActivity = (activity: Activity, day: number) => {
+    setIsChatOpen(true)
+    setChatLaunchContext({
+      type: "activity",
+      day,
+      activityId: activity.id,
+      name: activity.name,
+      location: activity.location,
+    })
+  }
+
+  const openChatForTransport = (leg: TransportLeg, from: Activity, to: Activity, day: number) => {
+    setIsChatOpen(true)
+    setChatLaunchContext({
+      type: "transport",
+      day,
+      from: from.name,
+      to: to.name,
+    })
+    setHighlightedTransport({ day, fromActivityId: leg.fromActivityId })
+    setTimeout(() => setHighlightedTransport(null), 2000)
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="sticky top-0 z-10 border-b border-blue-100 bg-white/95 backdrop-blur">
@@ -113,28 +141,34 @@ export default function ItineraryResults({ itinerary, onBack, onUpdateItinerary 
       <div className="mx-auto max-w-7xl px-4 py-8">
         {view === "overview" && <ItineraryOverview itinerary={itinerary.overview} onSelectDay={handleSelectDay} />}
         {view === "daily" && (
-        <DailyDetailPage
-          day={selectedDay}
-          activities={activitiesForDay}
-          transports={transportsForDay}
-          availableDays={availableDays}
-          onSelectDay={handleSelectDay}
-          highlightTransportFromId={
-            highlightedTransport && highlightedTransport.day === selectedDay ? highlightedTransport.fromActivityId : null
-          }
-        />
-      )}
-    </div>
+          <DailyDetailPage
+            day={selectedDay}
+            activities={activitiesForDay}
+            transports={transportsForDay}
+            availableDays={availableDays}
+            onSelectDay={handleSelectDay}
+            highlightTransportFromId={
+              highlightedTransport && highlightedTransport.day === selectedDay ? highlightedTransport.fromActivityId : null
+            }
+            onOpenChatForActivity={openChatForActivity}
+            onOpenChatForTransport={openChatForTransport}
+          />
+        )}
+      </div>
 
-    <ItineraryChat
+      <ItineraryChat
         isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
+        onClose={() => {
+          setIsChatOpen(false)
+          setChatLaunchContext(null)
+        }}
         currentView={view}
-      currentDay={selectedDay}
-      itinerary={itinerary}
-      onItineraryUpdate={handleUpdateItinerary}
-      onApplyResult={handleApplyResult}
-    />
-  </main>
-)
+        currentDay={selectedDay}
+        itinerary={itinerary}
+        launchContext={chatLaunchContext}
+        onItineraryUpdate={handleUpdateItinerary}
+        onApplyResult={handleApplyResult}
+      />
+    </main>
+  )
 }
