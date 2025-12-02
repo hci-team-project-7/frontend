@@ -48,6 +48,8 @@ export interface Activity {
   id: string
   name: string
   location: string
+  lat?: number
+  lng?: number
   time: string
   duration: string
   description: string
@@ -77,6 +79,12 @@ export interface ChatChange {
   location?: string
   details?: string
   mode?: TransportMode
+  afterActivityName?: string
+  fromLocation?: string
+  toLocation?: string
+  lat?: number
+  lng?: number
+  address?: string
 }
 
 export interface ChatRestaurantRecommendation {
@@ -84,6 +92,16 @@ export interface ChatRestaurantRecommendation {
   location: string
   rating?: number
   cuisine?: string
+  address?: string
+  lat?: number
+  lng?: number
+  distanceMeters?: number
+  anchorActivityName?: string
+  userRatingsTotal?: number
+  source?: string
+  isDemo?: boolean
+  walkingMinutes?: number
+  drivingMinutes?: number
 }
 
 export interface ChatPreview {
@@ -99,6 +117,7 @@ export interface ChatMessage {
   sender: ChatSender
   timestamp: string
   preview?: ChatPreview
+  variant?: "system"
 }
 
 export interface ChatRequestContext {

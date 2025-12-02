@@ -1,16 +1,19 @@
 "use client"
 import { useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { PlannerFormData } from "@/lib/api-types"
+
+type UpdatePlannerData = <K extends keyof PlannerFormData>(key: K, value: PlannerFormData[K]) => void
 
 interface Step3Props {
-  data: any
-  updateData: (key: string, value: any) => void
+  data: PlannerFormData
+  updateData: UpdatePlannerData
 }
 
 export default function Step3Dates({ data, updateData }: Step3Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [startDate, setStartDate] = useState<Date | null>(null)
-  const [endDate, setEndDate] = useState<Date | null>(null)
+  const [startDate, setStartDate] = useState<Date | null>(data.dateRange ? new Date(data.dateRange.start) : null)
+  const [endDate, setEndDate] = useState<Date | null>(data.dateRange ? new Date(data.dateRange.end) : null)
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
@@ -42,10 +45,10 @@ export default function Step3Dates({ data, updateData }: Step3Props) {
     }
   }
 
-  const setQuickOption = (option: string) => {
+  const setQuickOption = (option: "next-weekend" | "next-month" | "summer") => {
     const today = new Date()
-    let start: Date
-    let end: Date
+    let start: Date | null = null
+    let end: Date | null = null
 
     if (option === "next-weekend") {
       const daysUntilFriday = (5 - today.getDay()) % 7 || 7
@@ -59,6 +62,10 @@ export default function Step3Dates({ data, updateData }: Step3Props) {
     } else if (option === "summer") {
       start = new Date(today.getFullYear(), 5, 1)
       end = new Date(today.getFullYear(), 8, 31)
+    }
+
+    if (!start || !end) {
+      return
     }
 
     setStartDate(start)

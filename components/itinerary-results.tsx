@@ -5,7 +5,7 @@ import ItineraryOverview from "@/components/itinerary/overview"
 import DailyDetailPage from "@/components/itinerary/daily-detail"
 import ItineraryChat from "@/components/itinerary-chat"
 import { Button } from "@/components/ui/button"
-import { Activity, Itinerary, TransportLeg } from "@/lib/api-types"
+import { Activity, ChatChange, Itinerary, TransportLeg } from "@/lib/api-types"
 
 interface ItineraryResultsProps {
   itinerary: Itinerary
@@ -18,6 +18,9 @@ export default function ItineraryResults({ itinerary, onBack, onUpdateItinerary 
   const [view, setView] = useState<"overview" | "daily">("overview")
   const [selectedDay, setSelectedDay] = useState<number>(firstDay)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [highlightedTransport, setHighlightedTransport] = useState<{ day: number; fromActivityId: string } | null>(
+    null,
+  )
 
   const availableDays = useMemo(() => itinerary.overview.map((day) => day.day), [itinerary.overview])
   const activitiesForDay: Activity[] = useMemo(() => {
@@ -44,6 +47,31 @@ export default function ItineraryResults({ itinerary, onBack, onUpdateItinerary 
     const hasSelectedDay = next.overview.some((day) => day.day === selectedDay)
     if (!hasSelectedDay && next.overview.length > 0) {
       setSelectedDay(next.overview[0].day)
+    }
+  }
+
+  const handleApplyResult = (changes: ChatChange[], updated: Itinerary) => {
+    const transportChange = changes.find((c) => c.action === "transport")
+    if (transportChange && transportChange.fromLocation && transportChange.toLocation) {
+      const dayKey = String(transportChange.day || selectedDay)
+      const acts = updated.activitiesByDay[dayKey] || []
+      const fromIdx = acts.findIndex(
+        (a) =>
+          transportChange.fromLocation &&
+          (a.name.toLowerCase().includes(transportChange.fromLocation.toLowerCase()) ||
+            a.location.toLowerCase().includes(transportChange.fromLocation.toLowerCase())),
+      )
+      const toIdx = acts.findIndex(
+        (a) =>
+          transportChange.toLocation &&
+          (a.name.toLowerCase().includes(transportChange.toLocation.toLowerCase()) ||
+            a.location.toLowerCase().includes(transportChange.toLocation.toLowerCase())),
+      )
+      if (fromIdx !== -1 && toIdx !== -1 && Math.abs(toIdx - fromIdx) === 1) {
+        const fromAct = acts[Math.min(fromIdx, toIdx)]
+        setHighlightedTransport({ day: transportChange.day || selectedDay, fromActivityId: fromAct.id })
+        setTimeout(() => setHighlightedTransport(null), 2600)
+      }
     }
   }
 
@@ -85,24 +113,28 @@ export default function ItineraryResults({ itinerary, onBack, onUpdateItinerary 
       <div className="mx-auto max-w-7xl px-4 py-8">
         {view === "overview" && <ItineraryOverview itinerary={itinerary.overview} onSelectDay={handleSelectDay} />}
         {view === "daily" && (
-          <DailyDetailPage
-            day={selectedDay}
-            activities={activitiesForDay}
-            transports={transportsForDay}
-            availableDays={availableDays}
-            onSelectDay={handleSelectDay}
-          />
-        )}
-      </div>
+        <DailyDetailPage
+          day={selectedDay}
+          activities={activitiesForDay}
+          transports={transportsForDay}
+          availableDays={availableDays}
+          onSelectDay={handleSelectDay}
+          highlightTransportFromId={
+            highlightedTransport && highlightedTransport.day === selectedDay ? highlightedTransport.fromActivityId : null
+          }
+        />
+      )}
+    </div>
 
-      <ItineraryChat
+    <ItineraryChat
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         currentView={view}
-        currentDay={selectedDay}
-        itinerary={itinerary}
-        onItineraryUpdate={handleUpdateItinerary}
-      />
-    </main>
-  )
+      currentDay={selectedDay}
+      itinerary={itinerary}
+      onItineraryUpdate={handleUpdateItinerary}
+      onApplyResult={handleApplyResult}
+    />
+  </main>
+)
 }

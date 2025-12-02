@@ -1,8 +1,11 @@
 "use client"
+import { PlannerFormData } from "@/lib/api-types"
+
+type UpdatePlannerData = <K extends keyof PlannerFormData>(key: K, value: PlannerFormData[K]) => void
 
 interface Step5Props {
-  data: any
-  updateData: (key: string, value: any) => void
+  data: PlannerFormData
+  updateData: UpdatePlannerData
 }
 
 const travelStyles = [

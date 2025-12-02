@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { ChatMessage, Itinerary } from "@/lib/api-types"
+import { ChatChange, ChatMessage, ChatRestaurantRecommendation, Itinerary } from "@/lib/api-types"
 import { applyPreview, sendChatMessage } from "@/lib/api"
 
 interface ItineraryChatProps {
@@ -26,6 +26,7 @@ interface ItineraryChatProps {
   currentDay: number
   itinerary: Itinerary
   onItineraryUpdate: (itinerary: Itinerary) => void
+  onApplyResult?: (changes: ChatChange[], updated: Itinerary) => void
 }
 
 const buildInitialMessage = (): ChatMessage => ({
@@ -42,6 +43,7 @@ export default function ItineraryChat({
   currentDay,
   itinerary,
   onItineraryUpdate,
+  onApplyResult,
 }: ItineraryChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([buildInitialMessage()])
   const [inputValue, setInputValue] = useState("")
@@ -169,12 +171,14 @@ export default function ItineraryChat({
         changes,
       })
       onItineraryUpdate(response.updatedItinerary)
+      onApplyResult?.(changes, response.updatedItinerary)
       setMessages((prev) => [
         ...prev,
         {
           id: `apply-${Date.now()}`,
           text: response.systemMessage || "변경사항을 일정에 반영했습니다.",
           sender: "assistant",
+          variant: "system",
           timestamp: new Date().toISOString(),
         },
       ])
@@ -194,13 +198,21 @@ export default function ItineraryChat({
     }
   }
 
-  const handleSelectRestaurant = async (restaurantName: string, locationName: string, messageId: string) => {
+  const handleSelectRestaurant = async (restaurant: ChatRestaurantRecommendation, messageId: string) => {
     if (isRequesting) return
+    const anchor = restaurant.anchorActivityName || ""
+    const detailText =
+      restaurant.address ||
+      (anchor ? `${anchor} 방문 후 일정에 추가됩니다.` : "선택한 맛집을 일정에 추가합니다.")
     const change = {
       action: "add" as const,
       day: currentDay,
-      location: restaurantName,
-      details: `${locationName} 방문 후 추가됨`,
+      location: restaurant.name,
+      details: detailText,
+      afterActivityName: anchor || undefined,
+      lat: restaurant.lat,
+      lng: restaurant.lng,
+      address: restaurant.address,
     }
 
     setIsRequesting(true)
@@ -210,18 +222,15 @@ export default function ItineraryChat({
         changes: [change],
       })
       onItineraryUpdate(response.updatedItinerary)
+      onApplyResult?.([change], response.updatedItinerary)
       setMessages((prev) => [
         ...prev,
         {
           id: `restaurant-${Date.now()}`,
-          text: response.systemMessage || `${restaurantName}을 일정에 추가했습니다.`,
+          text: response.systemMessage || `${restaurant.name}을 일정에 추가했습니다.`,
           sender: "assistant",
+          variant: "system",
           timestamp: new Date().toISOString(),
-          preview: {
-            type: "change",
-            title: "일정 업데이트",
-            changes: [change],
-          },
         },
       ])
     } catch (err) {
@@ -336,8 +345,14 @@ export default function ItineraryChat({
             <div className="space-y-4">
               {messages.map((message) => (
                 <div key={message.id}>
-                  <div className={cn("flex gap-3", message.sender === "user" ? "justify-end" : "justify-start")}>
-                    {message.sender === "assistant" && (
+                  <div
+                    className={cn(
+                      "flex gap-3",
+                      message.sender === "user" ? "justify-end" : "justify-start",
+                      message.variant === "system" && "justify-center",
+                    )}
+                  >
+                    {message.sender === "assistant" && message.variant !== "system" && (
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100">
                         <Bot className="h-4 w-4 text-blue-600" />
                       </div>
@@ -345,11 +360,24 @@ export default function ItineraryChat({
                     <div
                       className={cn(
                         "max-w-[80%] rounded-2xl px-4 py-3 shadow-sm",
-                        message.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-900",
+                        message.variant === "system"
+                          ? "bg-slate-100 text-slate-700 border border-slate-200"
+                          : message.sender === "user"
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100 text-gray-900",
                       )}
                     >
                       <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
-                      <p className={cn("mt-1 text-xs", message.sender === "user" ? "text-blue-100" : "text-gray-500")}>
+                      <p
+                        className={cn(
+                          "mt-1 text-xs",
+                          message.variant === "system"
+                            ? "text-slate-500"
+                            : message.sender === "user"
+                              ? "text-blue-100"
+                              : "text-gray-500",
+                        )}
+                      >
                         {formatTime(message.timestamp)}
                       </p>
                     </div>
@@ -398,41 +426,63 @@ export default function ItineraryChat({
                     message.preview.recommendations && (
                       <div className="mt-3 ml-11 rounded-xl border border-orange-200 bg-orange-50/50 p-4">
                         <h4 className="mb-3 text-sm font-semibold text-gray-900">{message.preview.title}</h4>
-                        <div className="space-y-2">
-                          {message.preview.recommendations.map((restaurant, idx) => {
-                            const messageIndex = messages.findIndex((m) => m.id === message.id)
-                            const userResponse = messageIndex > 0 ? messages[messageIndex - 1] : null
-                            const locationContext = userResponse?.text || "해당 장소"
-                            return (
-                              <button
-                                key={`${restaurant.name}-${idx}`}
-                                onClick={() => handleSelectRestaurant(restaurant.name, locationContext, message.id)}
-                                className="w-full rounded-lg border border-orange-200 bg-white p-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-50"
-                                disabled={isRequesting}
-                              >
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{restaurant.name}</div>
-                                    <div className="mt-0.5 text-xs text-gray-600">{restaurant.location}</div>
-                                    {restaurant.cuisine && (
-                                      <div className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
-                                        {restaurant.cuisine}
-                                      </div>
-                                    )}
+                      <div className="space-y-2">
+                        {message.preview.recommendations.map((restaurant, idx) => (
+                          <button
+                            key={`${restaurant.name}-${idx}`}
+                            onClick={() => handleSelectRestaurant(restaurant, message.id)}
+                            className="w-full rounded-lg border border-orange-200 bg-white p-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-50"
+                            disabled={isRequesting}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                {restaurant.isDemo && (
+                                  <div className="mb-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-slate-600">
+                                    데모용 추천
                                   </div>
+                                )}
+                                <div className="font-medium text-gray-900">{restaurant.name}</div>
+                                <div className="mt-0.5 text-xs text-gray-600">
+                                  {restaurant.address || restaurant.location}
+                                  {restaurant.distanceMeters ? ` · 약 ${Math.round(restaurant.distanceMeters / 100) / 10}km` : ""}
+                                </div>
+                                {restaurant.anchorActivityName && (
+                                  <div className="mt-1 text-[11px] text-orange-700">
+                                    {restaurant.anchorActivityName} 인근 추천
+                                  </div>
+                                )}
+                                {(restaurant.walkingMinutes || restaurant.drivingMinutes) && (
+                                  <div className="mt-1 text-[11px] text-gray-600">
+                                    {restaurant.walkingMinutes && `도보 ~${restaurant.walkingMinutes}분`}
+                                    {restaurant.walkingMinutes && restaurant.drivingMinutes && " · "}
+                                    {restaurant.drivingMinutes && `차량 ~${restaurant.drivingMinutes}분`}
+                                  </div>
+                                )}
+                                {restaurant.cuisine && (
+                                  <div className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
+                                    {restaurant.cuisine}
+                                  </div>
+                                )}
+                              </div>
+                              {(restaurant.rating || restaurant.userRatingsTotal) && (
+                                <div className="ml-2 flex flex-col items-end gap-1 text-xs text-gray-600">
                                   {restaurant.rating && (
-                                    <div className="ml-2 flex items-center gap-1 text-xs text-gray-600">
+                                    <div className="flex items-center gap-1">
                                       <span className="font-semibold">★</span>
                                       <span>{restaurant.rating}</span>
                                     </div>
                                   )}
+                                  {restaurant.userRatingsTotal && (
+                                    <div className="text-[11px] text-gray-500">리뷰 {restaurant.userRatingsTotal}개</div>
+                                  )}
                                 </div>
-                              </button>
-                            )
-                          })}
-                        </div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               ))}
 

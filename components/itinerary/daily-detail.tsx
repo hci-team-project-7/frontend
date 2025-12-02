@@ -10,12 +10,14 @@ export default function DailyDetailPage({
   transports,
   availableDays,
   onSelectDay,
+  highlightTransportFromId,
 }: {
   day: number
   activities: Activity[]
   transports: TransportLeg[]
   availableDays: number[]
   onSelectDay: (day: number) => void
+  highlightTransportFromId?: string | null
 }) {
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null)
 
@@ -58,6 +60,7 @@ export default function DailyDetailPage({
             transports={transports}
             expandedActivity={expandedActivity}
             onSelectActivity={setExpandedActivity}
+            highlightTransportFromId={highlightTransportFromId}
           />
         </div>
 

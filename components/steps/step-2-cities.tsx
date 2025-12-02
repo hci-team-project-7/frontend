@@ -1,11 +1,15 @@
 "use client"
+import { PlannerFormData } from "@/lib/api-types"
+
+type UpdatePlannerData = <K extends keyof PlannerFormData>(key: K, value: PlannerFormData[K]) => void
+type City = { id: string; name: string; image: string }
 
 interface Step2Props {
-  data: any
-  updateData: (key: string, value: any) => void
+  data: PlannerFormData
+  updateData: UpdatePlannerData
 }
 
-const cityDatabase: Record<string, any[]> = {
+const cityDatabase: Record<string, City[]> = {
   프랑스: [
     {
       id: "paris",
@@ -201,7 +205,7 @@ const cityDatabase: Record<string, any[]> = {
 }
 
 export default function Step2Cities({ data, updateData }: Step2Props) {
-  const cities = cityDatabase[data.country] || []
+  const cities = data.country ? cityDatabase[data.country] || [] : []
 
   const toggleCity = (cityName: string) => {
     const updatedCities = data.cities.includes(cityName)
@@ -220,7 +224,7 @@ export default function Step2Cities({ data, updateData }: Step2Props) {
 
       {/* Cities Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {cities.map((city) => (
+        {cities.map((city: City) => (
           <button
             key={city.id}
             onClick={() => toggleCity(city.name)}

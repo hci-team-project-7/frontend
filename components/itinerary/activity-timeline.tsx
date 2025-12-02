@@ -1,5 +1,6 @@
 "use client"
 import { useMemo } from "react"
+import { cn } from "@/lib/utils"
 import { Activity, TransportLeg } from "@/lib/api-types"
 
 export default function ActivityTimeline({
@@ -7,17 +8,25 @@ export default function ActivityTimeline({
   transports,
   expandedActivity,
   onSelectActivity,
+  highlightTransportFromId,
 }: {
   activities: Activity[]
   transports: TransportLeg[]
   expandedActivity: string | null
   onSelectActivity: (id: string) => void
+  highlightTransportFromId?: string | null
 }) {
   const transportMap = useMemo(() => {
     const map = new Map<string, TransportLeg>()
     transports.forEach((leg) => map.set(leg.fromActivityId, leg))
     return map
   }, [transports])
+
+  const activityMap = useMemo(() => {
+    const map = new Map<string, Activity>()
+    activities.forEach((act) => map.set(act.id, act))
+    return map
+  }, [activities])
 
   const modeLabel = (mode: TransportLeg["mode"]) => {
     switch (mode) {
@@ -53,6 +62,8 @@ export default function ActivityTimeline({
         {activities.map((activity, idx) => {
           const leg = transportMap.get(activity.id)
           const isLast = idx === activities.length - 1
+          const toActivity = leg ? activityMap.get(leg.toActivityId) : null
+          const isHighlighted = leg && highlightTransportFromId === leg.fromActivityId
           return (
             <div key={activity.id} className="relative">
               {/* Card */}
@@ -100,12 +111,25 @@ export default function ActivityTimeline({
               {/* Transport leg */}
               {leg && !isLast && (
                 <div className="ml-8 border-l-2 border-dashed border-blue-200 pl-6 py-3">
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between text-sm text-blue-900 shadow-sm">
-                    <div className="flex items-center gap-2 font-semibold">
+                  <div
+                    className={cn(
+                      "rounded-lg border px-4 py-3 flex items-center justify-between text-sm shadow-sm transition-colors",
+                      isHighlighted
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
+                        : "border-blue-200 bg-blue-50 text-blue-900",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 font-semibold">
                       <span>{modeIcon(leg.mode)}</span>
-                      <span>{modeLabel(leg.mode)} 이동</span>
+                      <div className="flex flex-col">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">이동</span>
+                        <span className="text-sm">
+                          {activity.name} → {toActivity?.name || "다음 장소"}
+                        </span>
+                        <span className="text-xs text-gray-500">{modeLabel(leg.mode)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-blue-800">
+                    <div className="flex items-center gap-3 text-xs">
                       <span>⏱ {leg.durationMinutes}분</span>
                       <span>📏 {(leg.distanceMeters / 1000).toFixed(1)}km</span>
                     </div>

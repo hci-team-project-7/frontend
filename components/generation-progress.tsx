@@ -32,28 +32,42 @@ const BLURBS = [
   "비슷한 일정에서 인기 높았던 코스를 중심으로 다듬고 있어요.",
 ]
 
+const INITIAL_PROGRESS = 16
+const EXPECTED_DURATION_MS = 3 * 60 * 1000
+const PROGRESS_CAP = 97
+const PROGRESS_TICK_MS = 2000
+
 export default function GenerationProgress() {
-  const [progress, setProgress] = useState(16)
+  const [progress, setProgress] = useState(INITIAL_PROGRESS)
   const [activeStage, setActiveStage] = useState(0)
   const [tipIndex, setTipIndex] = useState(0)
 
   useEffect(() => {
-    setProgress(16)
+    setProgress(INITIAL_PROGRESS)
     setActiveStage(0)
     setTipIndex(0)
 
+    const startTime = performance.now()
+    const stageSpacing = EXPECTED_DURATION_MS / STAGES.length
+
     const stageTimers = STAGES.slice(1).map((_, index) =>
-      setTimeout(() => setActiveStage(index + 1), (index + 1) * 1800),
+      setTimeout(() => setActiveStage(index + 1), stageSpacing * (index + 1)),
     )
 
     const progressTimer = setInterval(() => {
+      const elapsed = performance.now() - startTime
+
       setProgress((prev) => {
-        if (prev >= 96) return prev
-        const boost = prev < 35 ? 8 : prev < 65 ? 5 : 3
-        const jitter = Math.random() * 2.5
-        return Math.min(prev + boost + jitter, 96)
+        if (prev >= PROGRESS_CAP) return prev
+
+        const normalized = Math.min(elapsed / EXPECTED_DURATION_MS, 1)
+        const target = INITIAL_PROGRESS + normalized * (PROGRESS_CAP - INITIAL_PROGRESS)
+        const jitter = Math.random() * 0.8
+        const next = Math.max(prev, target + jitter)
+
+        return Math.min(next, PROGRESS_CAP)
       })
-    }, 650)
+    }, PROGRESS_TICK_MS)
 
     const tipTimer = setInterval(() => {
       setTipIndex((prev) => (prev + 1) % BLURBS.length)
@@ -93,7 +107,7 @@ export default function GenerationProgress() {
                 </span>
                 <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 shadow-sm">
                   <Timer className="h-4 w-4 text-amber-500" />
-                  보통 10~20초 내외
+                  보통 약 3분 내외
                 </span>
               </div>
             </div>
