@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useState } from "react"
+import { RefObject, useEffect, useMemo, useState } from "react"
 import DaySidebar from "@/components/itinerary/day-sidebar"
 import ItineraryMap from "@/components/itinerary/itinerary-map"
 import { DayItinerary } from "@/lib/api-types"
@@ -8,9 +8,13 @@ import { formatScheduleTime } from "@/lib/time-format"
 export default function ItineraryOverview({
   itinerary,
   onSelectDay,
+  sidebarRef,
+  contentRef,
 }: {
   itinerary: DayItinerary[]
   onSelectDay: (day: number) => void
+  sidebarRef?: RefObject<HTMLDivElement>
+  contentRef?: RefObject<HTMLDivElement>
 }) {
   const [selectedDay, setSelectedDay] = useState<number | null>(itinerary[0]?.day ?? null)
 
@@ -40,10 +44,15 @@ export default function ItineraryOverview({
   return (
     <div className="grid grid-cols-12 gap-6">
       <div className="col-span-12 lg:col-span-4">
-        <DaySidebar itinerary={itinerary} selectedDay={selectedDay} onSelectDay={handleDayClick} />
+        <DaySidebar
+          itinerary={itinerary}
+          selectedDay={selectedDay}
+          onSelectDay={handleDayClick}
+          containerRef={sidebarRef}
+        />
       </div>
 
-      <div className="col-span-12 lg:col-span-8 space-y-6">
+      <div ref={contentRef} className="col-span-12 lg:col-span-8 space-y-6">
         {selected ? (
           <>
             <div className="rounded-xl border border-blue-100 bg-white shadow-sm">

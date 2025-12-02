@@ -1,17 +1,21 @@
 "use client"
+"use client"
+import { RefObject } from "react"
 import { DayItinerary } from "@/lib/api-types"
 
 export default function DaySidebar({
   itinerary,
   selectedDay,
   onSelectDay,
+  containerRef,
 }: {
   itinerary: DayItinerary[]
   selectedDay: number | null
   onSelectDay: (day: number) => void
+  containerRef?: RefObject<HTMLDivElement>
 }) {
   return (
-    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+    <div ref={containerRef} className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
       <h2 className="text-xl font-bold text-blue-900 mb-4">7일 일정 개요</h2>
       {itinerary.map((day) => (
         <div

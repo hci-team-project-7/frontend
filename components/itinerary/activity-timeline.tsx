@@ -1,5 +1,5 @@
 "use client"
-import { useMemo } from "react"
+import { RefObject, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { Activity, TransportLeg } from "@/lib/api-types"
 
@@ -10,8 +10,10 @@ export default function ActivityTimeline({
   expandedActivity,
   onSelectActivity,
   highlightTransportFromId,
+  highlightActivityId,
   onOpenChatForActivity,
   onOpenChatForTransport,
+  containerRef,
 }: {
   day: number
   activities: Activity[]
@@ -19,8 +21,10 @@ export default function ActivityTimeline({
   expandedActivity: string | null
   onSelectActivity: (id: string) => void
   highlightTransportFromId?: string | null
+  highlightActivityId?: string | null
   onOpenChatForActivity?: (activity: Activity, day: number) => void
   onOpenChatForTransport?: (leg: TransportLeg, from: Activity, to: Activity, day: number) => void
+  containerRef?: RefObject<HTMLDivElement>
 }) {
   const transportMap = useMemo(() => {
     const map = new Map<string, TransportLeg>()
@@ -61,7 +65,7 @@ export default function ActivityTimeline({
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       <h2 className="text-xl font-bold text-blue-900 mb-6">일정 타임라인</h2>
 
       <div className="space-y-4">
@@ -70,6 +74,7 @@ export default function ActivityTimeline({
           const isLast = idx === activities.length - 1
           const toActivity = leg ? activityMap.get(leg.toActivityId) : null
           const isHighlighted = leg && highlightTransportFromId === leg.fromActivityId
+          const isActivityHighlighted = highlightActivityId === activity.id
           return (
             <div key={activity.id} className="relative">
               {/* Card */}
@@ -77,7 +82,9 @@ export default function ActivityTimeline({
                 className={`rounded-lg border-2 p-4 transition-all transform hover:scale-102 cursor-pointer ${
                   expandedActivity === activity.id
                     ? "border-blue-500 bg-blue-50 shadow-lg"
-                    : "border-gray-200 bg-white hover:border-blue-300"
+                    : isActivityHighlighted
+                      ? "border-amber-400 bg-amber-50 shadow-lg"
+                      : "border-gray-200 bg-white hover:border-blue-300"
                 }`}
                 onClick={() => onSelectActivity(activity.id)}
                 onDoubleClick={() => onOpenChatForActivity?.(activity, day)}

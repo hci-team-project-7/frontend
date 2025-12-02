@@ -1,9 +1,62 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Activity } from "@/lib/api-types"
 
 export default function ActivityDetail({ activity }: { activity: Activity }) {
   const [isFavorite, setIsFavorite] = useState(false)
+  const [view, setView] = useState<"detail" | "map">("detail")
+
+  // Reset view when activity changes
+  useEffect(() => {
+    setView("detail")
+  }, [activity.id])
+
+  const mapEmbed = useMemo(() => {
+    const latNum = typeof activity.lat === "string" ? parseFloat(activity.lat) : activity.lat
+    const lngNum = typeof activity.lng === "string" ? parseFloat(activity.lng) : activity.lng
+    if (latNum === undefined || lngNum === undefined || Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+      return { url: null, error: "이 일정에는 위치 정보가 없습니다." }
+    }
+    const delta = 0.02
+    const bbox = [lngNum - delta, latNum - delta, lngNum + delta, latNum + delta]
+    const url = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox.join(",")}&layer=mapnik&marker=${latNum},${lngNum}`
+    return { url, error: null }
+  }, [activity.lat, activity.lng])
+
+  if (view === "map") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">📍 {activity.location}</p>
+            <h2 className="text-2xl font-bold text-blue-900 mt-1">{activity.name}</h2>
+          </div>
+          <button
+            onClick={() => setView("detail")}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            뒤로 가기
+          </button>
+        </div>
+
+        <div className="rounded-xl overflow-hidden border-2 border-gray-200 h-96 relative">
+          {mapEmbed.url ? (
+            <iframe
+              title={`${activity.name} map`}
+              src={mapEmbed.url}
+              className="w-full h-full"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 text-sm text-gray-700">
+              {mapEmbed.error || "지도를 불러오지 못했습니다."}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -80,12 +133,12 @@ export default function ActivityDetail({ activity }: { activity: Activity }) {
         </div>
 
         {/* Buttons */}
-        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">
-          <button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+        <div className="grid grid-cols-1 gap-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setView("map")}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
             지도에서 보기
-          </button>
-          <button className="bg-orange-400 hover:bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
-            길찾기
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useState } from "react"
+import { RefObject, useEffect, useMemo, useState } from "react"
 import ActivityTimeline from "@/components/itinerary/activity-timeline"
 import ActivityDetail from "@/components/itinerary/activity-detail"
 import { Activity, TransportLeg } from "@/lib/api-types"
@@ -11,8 +11,11 @@ export default function DailyDetailPage({
   availableDays,
   onSelectDay,
   highlightTransportFromId,
+  highlightActivityId,
   onOpenChatForActivity,
   onOpenChatForTransport,
+  timelineRef,
+  detailRef,
 }: {
   day: number
   activities: Activity[]
@@ -20,8 +23,11 @@ export default function DailyDetailPage({
   availableDays: number[]
   onSelectDay: (day: number) => void
   highlightTransportFromId?: string | null
+  highlightActivityId?: string | null
   onOpenChatForActivity?: (activity: Activity, day: number) => void
   onOpenChatForTransport?: (leg: TransportLeg, from: Activity, to: Activity, day: number) => void
+  timelineRef?: RefObject<HTMLDivElement>
+  detailRef?: RefObject<HTMLDivElement>
 }) {
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null)
 
@@ -58,7 +64,7 @@ export default function DailyDetailPage({
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-5">
+        <div ref={timelineRef} className="col-span-12 lg:col-span-5">
           <ActivityTimeline
             day={day}
             activities={activities}
@@ -66,12 +72,13 @@ export default function DailyDetailPage({
             expandedActivity={expandedActivity}
             onSelectActivity={setExpandedActivity}
             highlightTransportFromId={highlightTransportFromId}
+            highlightActivityId={highlightActivityId}
             onOpenChatForActivity={onOpenChatForActivity}
             onOpenChatForTransport={onOpenChatForTransport}
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-7 md:sticky md:top-24 md:self-start">
+        <div ref={detailRef} className="col-span-12 lg:col-span-7 md:sticky md:top-24 md:self-start">
           <div className="md:max-h-[calc(100vh-160px)] md:overflow-y-auto md:pr-1">
             {selectedActivity ? (
               <ActivityDetail activity={selectedActivity} />

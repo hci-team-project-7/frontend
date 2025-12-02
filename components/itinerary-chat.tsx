@@ -61,6 +61,7 @@ export default function ItineraryChat({
   const [focusedTarget, setFocusedTarget] = useState<ChatLaunchContext | null>(null)
   const [restaurantPrompt, setRestaurantPrompt] = useState<{ messageId: string; day: number } | null>(null)
   const [mealPrompt, setMealPrompt] = useState<{ restaurant: ChatRestaurantRecommendation; day: number; messageId: string } | null>(null)
+  const [lastRecommendationType, setLastRecommendationType] = useState<"replace" | "restaurant" | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -71,6 +72,7 @@ export default function ItineraryChat({
     setInputValue("")
     setPendingAction(null)
     setFocusedTarget(null)
+    setLastRecommendationType(null)
     setRestaurantPrompt(null)
     setMealPrompt(null)
   }, [itinerary.id])
@@ -88,6 +90,7 @@ export default function ItineraryChat({
   useEffect(() => {
     if (!isOpen) {
       setPendingAction(null)
+      setLastRecommendationType(null)
       setRestaurantPrompt(null)
       setMealPrompt(null)
     }
@@ -130,26 +133,6 @@ export default function ItineraryChat({
   const focusedLabel =
     focusedTarget && (focusedTarget.type === "transport" ? `${focusedTarget.from} → ${focusedTarget.to}` : focusedTarget.name)
 
-  const buildReplacementSuggestions = useMemo(() => {
-    if (!focusedTarget || focusedTarget.type !== "activity") return () => []
-    const city = focusedTarget.location || plannerData.cities[0] || plannerData.country
-    return () => [
-      { name: `${city} 현대 미술 갤러리`, location: city, source: "replacement", cuisine: "전시 · 문화" },
-      { name: `${city} 정원 산책`, location: city, source: "replacement", cuisine: "산책 · 휴식" },
-      { name: `${city} 감성 카페`, location: city, source: "replacement", cuisine: "카페 · 휴식" },
-    ]
-  }, [focusedTarget, plannerData.cities, plannerData.country])
-
-  const buildRestaurantSuggestions = useMemo(() => {
-    const city = focusedTarget?.type === "activity" ? focusedTarget.location : plannerData.cities[0] || plannerData.country
-    const anchor = focusedTarget?.type === "activity" ? focusedTarget.name : city
-    return () => [
-      { name: `${city} 브런치 스팟`, location: city, cuisine: "브런치", rating: 4.6, anchorActivityName: anchor, source: "restaurant" },
-      { name: `${city} 비스트로`, location: `${city} 시내`, cuisine: "프랑스 가정식", rating: 4.5, anchorActivityName: anchor, source: "restaurant" },
-      { name: `${city} 로스터리 카페`, location: `${city} 중심가`, cuisine: "커피 · 디저트", rating: 4.7, anchorActivityName: anchor, source: "restaurant" },
-    ]
-  }, [focusedTarget, plannerData.cities, plannerData.country])
-
   const detectTransportModeFromText = (text: string): ChatChange["mode"] => {
     const lowered = text.toLowerCase()
     if (lowered.includes("도보") || lowered.includes("walk")) return "walk"
@@ -167,76 +150,99 @@ export default function ItineraryChat({
     return "drive"
   }
 
+  const triggerBackendRecommendation = async (actionType: "replace" | "restaurant") => {
+    const timestamp = new Date().toISOString()
+    const isReplace = actionType === "replace"
+    const target = focusedTarget
+
+    if (!target || (isReplace && target.type !== "activity")) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `need-target-${Date.now()}`,
+          text: isReplace ? "변경할 장소 카드를 더블클릭해서 선택해 주세요." : "추천을 받을 카드를 더블클릭해 주세요.",
+          sender: "assistant",
+          timestamp,
+        },
+      ])
+      return
+    }
+
+    const promptText = isReplace
+      ? `${target.name} 대신 같은 시간대에 넣을 다른 장소를 추천해줘`
+      : `${target.type === "activity" ? target.name : `${target.from} ${target.to}`} 주변 맛집 추천해줘`
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      text: promptText,
+      sender: "user",
+      timestamp,
+    }
+
+    setPendingAction(actionType)
+    setIsRequesting(true)
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+      {
+        id: `waiting-${Date.now()}`,
+        text: "추천을 찾는 중입니다. 잠시만 기다려주세요...",
+        sender: "assistant",
+        variant: "system",
+        timestamp,
+      },
+    ])
+
+    try {
+      const response = await sendChatMessage(itinerary.id, {
+        message: { text: promptText, timestamp },
+        context: {
+          currentView,
+          currentDay: target.day,
+          pendingAction: actionType,
+        },
+      })
+      if (response.reply) {
+        setMessages((prev) => [...prev, response.reply])
+        if (actionType === "restaurant" && response.reply.preview?.type === "recommendation") {
+          setRestaurantPrompt({ messageId: response.reply.id, day: target.day })
+          setLastRecommendationType("restaurant")
+        }
+        if (actionType === "replace" && response.reply.preview?.type === "recommendation") {
+          setLastRecommendationType("replace")
+        }
+      }
+      if (response.updatedItinerary) {
+        onItineraryUpdate(response.updatedItinerary)
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "추천을 가져오지 못했습니다."
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          text: `요청을 처리하는 중 문제가 발생했습니다: ${errorMessage}`,
+          sender: "assistant",
+          timestamp: new Date().toISOString(),
+        },
+      ])
+    } finally {
+      setIsRequesting(false)
+      setPendingAction(null)
+      setLastRecommendationType(null)
+    }
+  }
+
   const handleQuickAction = (actionType: "replace" | "transport" | "restaurant") => {
     const timestamp = new Date().toISOString()
 
     if (actionType === "replace") {
-      if (!focusedTarget || focusedTarget.type !== "activity") {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `need-target-${Date.now()}`,
-            text: "변경할 장소 카드를 더블클릭해서 선택해 주세요.",
-            sender: "assistant",
-            timestamp,
-          },
-        ])
-        return
-      }
-      const recommendations = buildReplacementSuggestions()
-      const messageId = `replace-${Date.now()}`
-      setPendingAction("replace")
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: messageId,
-          text: `${focusedTarget.name}을 일정에서 제거하겠습니다. 대신 이 자리에 들어갈 장소를 추천해드릴게요. 아래와 같은 장소는 어떠신가요? 모두 마음에 안드신다면 가고 싶은 곳을 직접 입력해주세요`,
-          sender: "assistant",
-          timestamp,
-          preview: {
-            type: "recommendation",
-            title: `${focusedTarget.name} 대체 추천`,
-            recommendations,
-          },
-        },
-      ])
-      inputRef.current?.focus()
+      void triggerBackendRecommendation("replace")
       return
     }
 
     if (actionType === "restaurant") {
-      if (!focusedTarget) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `need-restaurant-${Date.now()}`,
-            text: "맛집을 추천받을 카드를 먼저 더블클릭해 주세요.",
-            sender: "assistant",
-            timestamp,
-          },
-        ])
-        return
-      }
-      const anchorName =
-        focusedTarget.type === "activity" ? focusedTarget.name : `${focusedTarget.from} → ${focusedTarget.to}`
-      const messageId = `restaurant-${Date.now()}`
-      setRestaurantPrompt({ messageId, day: focusedTarget.day })
-      setPendingAction("restaurant")
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: messageId,
-          text: `${anchorName} 주변에서 가볼 만한 맛집을 골라봤어요. 마음에 드는 곳을 선택하면 일정에 반영해드리겠습니다.`,
-          sender: "assistant",
-          timestamp,
-          preview: {
-            type: "recommendation",
-            title: `${anchorName} 주변 추천`,
-            recommendations: buildRestaurantSuggestions(),
-          },
-        },
-      ])
-      inputRef.current?.focus()
+      void triggerBackendRecommendation("restaurant")
       return
     }
 
@@ -352,6 +358,16 @@ export default function ItineraryChat({
 
       if (response.reply) {
         setMessages((prev) => [...prev, response.reply])
+        if (response.reply.preview?.type === "recommendation") {
+          if (pendingAction === "restaurant") {
+            setRestaurantPrompt({ messageId: response.reply.id, day: focusedTarget?.day ?? currentDay })
+            setLastRecommendationType("restaurant")
+          } else if (pendingAction === "replace") {
+            setLastRecommendationType("replace")
+          } else {
+            setLastRecommendationType(null)
+          }
+        }
       }
       if (response.updatedItinerary) {
         onItineraryUpdate(response.updatedItinerary)
@@ -528,6 +544,7 @@ export default function ItineraryChat({
       setIsRequesting(false)
       setPendingAction(null)
       setMealPrompt(null)
+      setLastRecommendationType(null)
     }
   }
 
@@ -544,7 +561,65 @@ export default function ItineraryChat({
       },
     ])
     setRestaurantPrompt(null)
+    setLastRecommendationType(null)
     setPendingAction(null)
+  }
+
+  const normalizeChangesForFocusedTarget = (changes: ChatChange[]): ChatChange[] => {
+    if (!focusedTarget || focusedTarget.type !== "activity") return changes
+
+    const replaceChanges = changes.filter((c) => c.action === "replace")
+    if (replaceChanges.length) {
+      return changes.map((change) =>
+        change.action === "replace"
+          ? {
+              ...change,
+              day: change.day ?? focusedTarget.day,
+              targetLocation: change.targetLocation || focusedTarget.name,
+              fromLocation: change.fromLocation || focusedTarget.location,
+              details:
+                change.details ||
+                `${focusedTarget.name}을 ${change.location || "새 장소"}로 교체합니다.`,
+            }
+          : change,
+      )
+    }
+
+    const addChange = changes.find((c) => c.action === "add")
+    const removeChange = changes.find((c) => c.action === "remove")
+    if (addChange && removeChange) {
+      return [
+        {
+          action: "replace",
+          day: addChange.day ?? focusedTarget.day,
+          targetLocation: focusedTarget.name,
+          fromLocation: focusedTarget.location,
+          location: addChange.location,
+          details: addChange.details || removeChange.details || `${focusedTarget.name} 대체 일정`,
+          lat: addChange.lat,
+          lng: addChange.lng,
+          address: addChange.address,
+        },
+      ]
+    }
+
+    if (addChange) {
+      return [
+        {
+          action: "replace",
+          day: addChange.day ?? focusedTarget.day,
+          targetLocation: focusedTarget.name,
+          fromLocation: focusedTarget.location,
+          location: addChange.location,
+          details: addChange.details || `${focusedTarget.name}을 ${addChange.location}으로 교체합니다.`,
+          lat: addChange.lat,
+          lng: addChange.lng,
+          address: addChange.address,
+        },
+      ]
+    }
+
+    return changes
   }
 
   const handleApplyChanges = async (messageId: string) => {
@@ -552,14 +627,16 @@ export default function ItineraryChat({
     const changes = target?.preview?.changes
     if (!changes?.length || isRequesting) return
 
+    const normalizedChanges = normalizeChangesForFocusedTarget(changes)
+
     setIsRequesting(true)
     try {
       const response = await applyPreview(itinerary.id, {
         sourceMessageId: messageId,
-        changes,
+        changes: normalizedChanges,
       })
       onItineraryUpdate(response.updatedItinerary)
-      onApplyResult?.(changes, response.updatedItinerary)
+      onApplyResult?.(normalizedChanges, response.updatedItinerary)
       setMessages((prev) => [
         ...prev,
         {
@@ -588,14 +665,16 @@ export default function ItineraryChat({
 
   const handleSelectRecommendation = async (recommendation: ChatRestaurantRecommendation, messageId: string) => {
     if (isRequesting) return
-    if (recommendation.source === "replacement") {
+    if (lastRecommendationType === "replace") {
       await applyReplacementChange(recommendation.name, messageId, recommendation)
+      setLastRecommendationType(null)
       return
     }
 
     const promptId = `meal-${Date.now()}`
     setRestaurantPrompt(null)
     setPendingAction(null)
+    setLastRecommendationType(null)
     setMealPrompt({
       restaurant: recommendation,
       day: focusedTarget?.day || currentDay,

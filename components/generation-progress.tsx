@@ -32,50 +32,19 @@ const BLURBS = [
   "비슷한 일정에서 인기 높았던 코스를 중심으로 다듬고 있어요.",
 ]
 
-const INITIAL_PROGRESS = 16
-const EXPECTED_DURATION_MS = 3 * 60 * 1000
-const PROGRESS_CAP = 97
-const PROGRESS_TICK_MS = 2000
-
-export default function GenerationProgress() {
-  const [progress, setProgress] = useState(INITIAL_PROGRESS)
-  const [activeStage, setActiveStage] = useState(0)
+export default function GenerationProgress({ progress }: { progress: number }) {
   const [tipIndex, setTipIndex] = useState(0)
+  const normalized = Math.min(Math.max(progress, 0), 100)
+  const stageSize = 100 / STAGES.length
+  const activeStage = Math.min(STAGES.length - 1, Math.floor(normalized / stageSize))
 
   useEffect(() => {
-    setProgress(INITIAL_PROGRESS)
-    setActiveStage(0)
     setTipIndex(0)
-
-    const startTime = performance.now()
-    const stageSpacing = EXPECTED_DURATION_MS / STAGES.length
-
-    const stageTimers = STAGES.slice(1).map((_, index) =>
-      setTimeout(() => setActiveStage(index + 1), stageSpacing * (index + 1)),
-    )
-
-    const progressTimer = setInterval(() => {
-      const elapsed = performance.now() - startTime
-
-      setProgress((prev) => {
-        if (prev >= PROGRESS_CAP) return prev
-
-        const normalized = Math.min(elapsed / EXPECTED_DURATION_MS, 1)
-        const target = INITIAL_PROGRESS + normalized * (PROGRESS_CAP - INITIAL_PROGRESS)
-        const jitter = Math.random() * 0.8
-        const next = Math.max(prev, target + jitter)
-
-        return Math.min(next, PROGRESS_CAP)
-      })
-    }, PROGRESS_TICK_MS)
-
     const tipTimer = setInterval(() => {
       setTipIndex((prev) => (prev + 1) % BLURBS.length)
     }, 2400)
 
     return () => {
-      stageTimers.forEach(clearTimeout)
-      clearInterval(progressTimer)
       clearInterval(tipTimer)
     }
   }, [])
@@ -113,7 +82,7 @@ export default function GenerationProgress() {
             </div>
 
             <div className="text-right">
-              <div className="text-5xl font-black text-orange-500 drop-shadow-sm">{Math.round(progress)}%</div>
+              <div className="text-5xl font-black text-orange-500 drop-shadow-sm">{Math.round(normalized)}%</div>
               <p className="text-xs text-gray-500">진행도</p>
             </div>
           </div>
@@ -121,7 +90,7 @@ export default function GenerationProgress() {
           <div className="h-3 w-full overflow-hidden rounded-full bg-orange-100 shadow-inner">
             <div
               className="h-full rounded-full bg-gradient-to-r from-orange-400 via-amber-400 to-emerald-400 transition-[width] duration-500"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${normalized}%` }}
             />
           </div>
 

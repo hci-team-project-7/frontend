@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Step1Destination from "@/components/steps/step-1-destination"
 import Step2Cities from "@/components/steps/step-2-cities"
 import Step3Dates from "@/components/steps/step-3-dates"
@@ -23,7 +23,34 @@ export default function TravelPlanner() {
   })
   const [itinerary, setItinerary] = useState<Itinerary | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isSubmitting) {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
+      setProgress(0)
+      const startTime = Date.now()
+      const durationMs = 3 * 60 * 1000 // target ~3 minutes to reach ~95%
+      const maxDuringGeneration = 95
+      progressTimerRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTime
+        const ratio = Math.min(elapsed / durationMs, 1)
+        const nextProgress = Math.min(maxDuringGeneration, ratio * maxDuringGeneration)
+        setProgress((prev) => (nextProgress > prev && prev < 100 ? nextProgress : prev))
+      }, 1000)
+    } else if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current)
+      progressTimerRef.current = null
+    }
+    return () => {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current)
+        progressTimerRef.current = null
+      }
+    }
+  }, [isSubmitting])
 
   const handleNext = () => {
     if (currentStep < 5) {
@@ -52,15 +79,19 @@ export default function TravelPlanner() {
     }
 
     setIsSubmitting(true)
+    setProgress(0)
     setError(null)
     try {
       const createdItinerary = await createItinerary(payload)
       setItinerary(createdItinerary)
-      setShowResults(true)
+      setProgress(100)
+      setTimeout(() => {
+        setShowResults(true)
+        setIsSubmitting(false)
+      }, 320)
     } catch (err) {
       const message = err instanceof Error ? err.message : "여행 일정을 생성하는 중 문제가 발생했습니다."
       setError(message)
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -81,7 +112,7 @@ export default function TravelPlanner() {
 
   return (
     <main className="relative min-h-screen bg-white">
-      {isSubmitting && <GenerationProgress />}
+      {isSubmitting && <GenerationProgress progress={progress} />}
       <ProgressBar currentStep={currentStep} totalSteps={5} />
 
       <div className="mx-auto max-w-4xl px-4 py-12">
