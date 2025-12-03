@@ -1,6 +1,7 @@
 "use client"
 "use client"
 import { RefObject } from "react"
+import { getDayImage } from "@/lib/default-images"
 import { DayItinerary } from "@/lib/api-types"
 
 export default function DaySidebar({
@@ -28,7 +29,7 @@ export default function DaySidebar({
           <div
             className="h-24 bg-cover bg-center relative"
             style={{
-              backgroundImage: `url('${day.photo}')`,
+              backgroundImage: `url('${getDayImage(day.day)}')`,
             }}
           >
             <div className="absolute inset-0 bg-black/30 flex items-center justify-start">

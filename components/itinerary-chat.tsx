@@ -226,10 +226,11 @@ export default function ItineraryChat({
           timestamp: new Date().toISOString(),
         },
       ])
+      if (actionType === "restaurant") {
+        setPendingAction(null)
+      }
     } finally {
       setIsRequesting(false)
-      setPendingAction(null)
-      setLastRecommendationType(null)
     }
   }
 
@@ -439,6 +440,7 @@ export default function ItineraryChat({
     } finally {
       setIsRequesting(false)
       setPendingAction(null)
+      setLastRecommendationType(null)
     }
   }
 
@@ -667,7 +669,6 @@ export default function ItineraryChat({
     if (isRequesting) return
     if (lastRecommendationType === "replace") {
       await applyReplacementChange(recommendation.name, messageId, recommendation)
-      setLastRecommendationType(null)
       return
     }
 

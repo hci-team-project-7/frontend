@@ -1,10 +1,12 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
 import { Activity } from "@/lib/api-types"
+import { getActivityImage } from "@/lib/default-images"
 
 export default function ActivityDetail({ activity }: { activity: Activity }) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [view, setView] = useState<"detail" | "map">("detail")
+  const mainImage = getActivityImage(activity.id || activity.name)
 
   // Reset view when activity changes
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function ActivityDetail({ activity }: { activity: Activity }) {
     <div className="space-y-4">
       {/* Image Gallery */}
       <div className="rounded-xl overflow-hidden bg-gray-200 h-80">
-        <img src={activity.image || "/placeholder.svg"} alt={activity.name} className="w-full h-full object-cover" />
+        <img src={mainImage} alt={activity.name} className="w-full h-full object-cover" />
       </div>
 
       {/* Activity Info */}

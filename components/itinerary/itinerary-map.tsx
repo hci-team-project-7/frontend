@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { loadGoogleMaps } from "@/lib/google-maps-loader"
 import { formatScheduleTime } from "@/lib/time-format"
+import { DEFAULT_PLACE_IMAGE } from "@/lib/default-images"
 
 interface Location {
   name: string
@@ -239,14 +240,18 @@ export default function ItineraryMap({
     const title = placeDetails?.name || location.name
     const address = placeDetails?.address
     const rating = placeDetails?.rating
-    const photoUrl = placeDetails?.photoUrl
+    const photoUrl = placeDetails?.photoUrl || DEFAULT_PLACE_IMAGE
     const timeLabel = formatScheduleTime(location.time)
 
     const content = `
       <div style="max-width:260px;font-family:Inter,system-ui,-apple-system,sans-serif;">
-        ${photoUrl ? `<div style="width:100%;height:140px;border-radius:12px;overflow:hidden;margin-bottom:10px;">
+        ${
+          photoUrl
+            ? `<div style="width:100%;height:140px;border-radius:12px;overflow:hidden;margin-bottom:10px;">
           <img src="${photoUrl}" alt="${title}" style="width:100%;height:100%;object-fit:cover;" />
-        </div>` : ""}
+        </div>`
+            : ""
+        }
         <div style="font-weight:700;color:#0f172a;font-size:15px;line-height:1.3;">${title}</div>
         <div style="margin-top:6px;color:#4b5563;font-size:12px;">⏰ ${timeLabel}</div>
         ${address ? `<div style="margin-top:6px;color:#4b5563;font-size:12px;">📍 ${address}</div>` : ""}
@@ -288,7 +293,7 @@ export default function ItineraryMap({
     placesService.findPlaceFromQuery(
       {
         query: location.name,
-        fields: ["name", "formatted_address", "rating", "photos", "place_id", "geometry"],
+        fields: ["name", "formatted_address", "rating", "place_id", "geometry"],
         locationBias: { lat: location.lat, lng: location.lng },
       },
       (results: any, status: any) => {
@@ -304,7 +309,7 @@ export default function ItineraryMap({
             name: place.name || location.name,
             address: place.formatted_address,
             rating: place.rating,
-            photoUrl: place.photos?.[0]?.getUrl({ maxWidth: 320, maxHeight: 180 }),
+            photoUrl: DEFAULT_PLACE_IMAGE,
           }
           if (geoPosition) {
             details.location = geoPosition
@@ -316,7 +321,7 @@ export default function ItineraryMap({
             updateMarkerPosition(marker, idx, geoPosition, resolvedLocations)
           }
         } else {
-          placeCacheRef.current.set(cacheKey, { name: location.name })
+          placeCacheRef.current.set(cacheKey, { name: location.name, photoUrl: DEFAULT_PLACE_IMAGE })
         }
       }
     )

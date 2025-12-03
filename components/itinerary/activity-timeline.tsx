@@ -2,6 +2,7 @@
 import { RefObject, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { Activity, TransportLeg } from "@/lib/api-types"
+import { getActivityImage } from "@/lib/default-images"
 
 export default function ActivityTimeline({
   day,
@@ -75,6 +76,7 @@ export default function ActivityTimeline({
           const toActivity = leg ? activityMap.get(leg.toActivityId) : null
           const isHighlighted = leg && highlightTransportFromId === leg.fromActivityId
           const isActivityHighlighted = highlightActivityId === activity.id
+          const previewImage = getActivityImage(activity.id || activity.name || idx)
           return (
             <div key={activity.id} className="relative">
               {/* Card */}
@@ -103,7 +105,7 @@ export default function ActivityTimeline({
                     {/* Image preview */}
                     <div className="rounded-lg overflow-hidden mb-3 h-24 bg-gray-200">
                       <img
-                        src={activity.image || "/placeholder.svg"}
+                        src={previewImage}
                         alt={activity.name}
                         className="w-full h-full object-cover"
                       />

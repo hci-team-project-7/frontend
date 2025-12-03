@@ -4,6 +4,7 @@ import DaySidebar from "@/components/itinerary/day-sidebar"
 import ItineraryMap from "@/components/itinerary/itinerary-map"
 import { DayItinerary } from "@/lib/api-types"
 import { formatScheduleTime } from "@/lib/time-format"
+import { getDayImage } from "@/lib/default-images"
 
 export default function ItineraryOverview({
   itinerary,
@@ -33,6 +34,8 @@ export default function ItineraryOverview({
     return itinerary.find((day) => day.day === selectedDay) || itinerary[0]
   }, [itinerary, selectedDay])
 
+  const heroImage = getDayImage(selected?.day)
+
   const handleDayClick = (day: number) => {
     if (selectedDay === day) {
       onSelectDay(day) // 이미 선택된 카드를 다시 클릭했을 때만 상세 화면으로 이동
@@ -58,7 +61,7 @@ export default function ItineraryOverview({
             <div className="rounded-xl border border-blue-100 bg-white shadow-sm">
               <div className="relative h-64 w-full overflow-hidden rounded-t-xl">
                 <img
-                  src={selected.photo || "/placeholder.svg"}
+                  src={heroImage}
                   alt={selected.title}
                   className="h-full w-full object-cover"
                 />
